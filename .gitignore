@@ -1,1 +1,6 @@
 haabsa
+*.DS_Store
+__pycache__/
+data/externalData/*
+data/programGeneratedData/*
+

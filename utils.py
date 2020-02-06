@@ -2,7 +2,7 @@
 # encoding: utf-8
 
 import numpy as np
-
+import json
 
 def batch_index(length, batch_size, n_iter=100, is_shuffle=True):
     index = list(range(length))
@@ -118,6 +118,8 @@ def load_inputs_twitter(input_file, word_id_file, sentence_len, type_='', is_r=T
     all_target, all_sent, all_y = [], [], []
     # read in txt file
     lines = open(input_file).readlines()
+    n_asp = json.loads(lines[-1].strip())
+    lines = lines[:-1]
     for i in range(0, len(lines), 3):
         # targets
         words = lines[i + 1].lower().split()
@@ -172,15 +174,16 @@ def load_inputs_twitter(input_file, word_id_file, sentence_len, type_='', is_r=T
     y = change_y_to_onehot(y)
     if type_ == 'TD':
         return np.asarray(x), np.asarray(sen_len), np.asarray(x_r), \
-               np.asarray(sen_len_r), np.asarray(y)
+               np.asarray(sen_len_r), np.asarray(y), n_asp
     elif type_ == 'TC':
         return np.asarray(x), np.asarray(sen_len), np.asarray(x_r), np.asarray(sen_len_r), \
-               np.asarray(y), np.asarray(target_words), np.asarray(tar_len), np.asarray(all_sent), np.asarray(all_target), np.asarray(all_y)
+               np.asarray(y), np.asarray(target_words), np.asarray(tar_len), np.asarray(all_sent), \
+               np.asarray(all_target), np.asarray(all_y), n_asp
     elif type_ == 'IAN':
         return np.asarray(x), np.asarray(sen_len), np.asarray(target_words), \
-               np.asarray(tar_len), np.asarray(y)
+               np.asarray(tar_len), np.asarray(y), n_asp
     else:
-        return np.asarray(x), np.asarray(sen_len), np.asarray(y)
+        return np.asarray(x), np.asarray(sen_len), np.asarray(y), n_asp
 
 
 def load_inputs_twitter_(input_file, word_id_file, sentence_len, type_='', is_r=True, target_len=10, encoding='utf8'):

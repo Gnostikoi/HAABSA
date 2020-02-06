@@ -36,9 +36,9 @@ def loadDataAndEmbeddings(config,loadData):
             outF.write(' '.join(str(w) for w in wt[i]))
             outF.write("\n")
         outF.close()
-        print((len(source_word2idx)-count)/len(source_word2idx)*100)
+        print("OOV percentage: {}".format((len(source_word2idx)-count)/len(source_word2idx)*100))
         
-        return train_data[0], test_data[0], train_data[4], test_data[4]
+        return train_data[0], test_data[0], train_data[3], test_data[3]
 
     else:
         #get statistic properties from txt file
@@ -61,8 +61,10 @@ def getStatsFromFile(path):
     polarity_vector= []
     with open(path, "r") as fd:
         lines = fd.read().splitlines()
-        size = len(lines)/3
-        for i in range(0, len(lines), 3):
+        # sentence_n_asp = json.load(lines[-1].strip())
+        size = (len(lines)-1)/3
+        # size = len(sentence_n_asp)
+        for i in range(0, len(lines)-1, 3):
             #polarity
             polarity_vector.append(lines[i + 2].strip().split()[0])
     return size, polarity_vector

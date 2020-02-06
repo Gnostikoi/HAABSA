@@ -2,17 +2,24 @@
 # encoding: utf-8
 
 import tensorflow as tf
+from sklearn.metrics import f1_score
 import sys
+import os
 
+import os
+java_path = "/usr/bin/java"
+os.environ['JAVAHOME'] = java_path
 
 FLAGS = tf.app.flags.FLAGS
 #general variables
-tf.app.flags.DEFINE_integer("year",2015, "year data set [2014]")
+tf.app.flags.DEFINE_integer("year",2016, "year data set [2014]")
+# tf.app.flags.DEFINE_integer("year",2015, "year data set [2014]")
 tf.app.flags.DEFINE_integer('embedding_dim', 300, 'dimension of word embedding')
 tf.app.flags.DEFINE_integer('batch_size', 20, 'number of example per batch')
 tf.app.flags.DEFINE_integer('n_hidden', 300, 'number of hidden unit')
 tf.app.flags.DEFINE_float('learning_rate', 0.07, 'learning rate')
-tf.app.flags.DEFINE_integer('n_class', 3, 'number of distinct class')
+tf.app.flags.DEFINE_integer('n_class', 13, 'number of distinct class')
+# tf.app.flags.DEFINE_integer('n_class', 3, 'number of distinct class')
 tf.app.flags.DEFINE_integer('max_sentence_len', 80, 'max number of tokens per sentence')
 tf.app.flags.DEFINE_integer('max_doc_len', 20, 'max number of tokens per sentence')
 tf.app.flags.DEFINE_float('l2_reg', 0.00001, 'l2 regularization')
@@ -70,12 +77,59 @@ def loss_func(y, prob):
     loss = - tf.reduce_mean(y * tf.log(prob)) + sum(reg_loss)
     return loss
 
+def multi_hot_encoding(y_id_list):
+    one_hot = tf.one_hot(indices = y_id_list, depth = FLAGS.n_class, dtype = tf.int32)
+    return tf.reduce_sum(one_hot, reduction_indices = 0)
 
-def acc_func(y, prob):
-    correct_pred = tf.equal(tf.argmax(prob, 1), tf.argmax(y, 1))
+def acc_func(y, prob, n_asp):
+    y = tf.cast(tf.argmax(y, 1), tf.int32)
+    prob = tf.cast(tf.argmax(prob, 1), tf.int32)
+    print(type(y), type(prob))
+
+    correct_pred = tf.equal(prob,y)
     acc_num = tf.reduce_sum(tf.cast(correct_pred, tf.int32))
     acc_prob = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
-    return acc_num, acc_prob
+
+    asp_size = tf.size(n_asp)
+    begin = tf.map_fn(lambda x: tf.math.reduce_sum(n_asp[:x],0), tf.range(asp_size, dtype=tf.int32), tf.int32)
+    multi_y = tf.stack(
+        tf.map_fn( 
+            lambda i: multi_hot_encoding(tf.slice(y, [begin[i]], [n_asp[i]])), \
+            tf.range(asp_size, dtype=tf.int32), \
+            dtype = tf.int32, \
+            infer_shape=False)
+        )
+    multi_pred = tf.stack(
+        tf.map_fn( 
+            lambda i: multi_hot_encoding(tf.slice(prob, [begin[i]], [n_asp[i]])), \
+            tf.range(asp_size, dtype=tf.int32), \
+            dtype = tf.int32, \
+            infer_shape=False)
+        )
+    
+    f1s = [0, 0, 0]
+    y_true = tf.cast(multi_y, tf.float64)
+    y_pred = tf.cast(multi_pred, tf.float64)
+
+    for i, axis in enumerate([None, 0]):
+        TP = tf.count_nonzero(y_pred * y_true, axis=axis)
+        FP = tf.count_nonzero(y_pred * (y_true - 1), axis=axis)
+        FN = tf.count_nonzero((y_pred - 1) * y_true, axis=axis)
+
+        precision = TP / (TP + FP)
+        recall = TP / (TP + FN)
+        f1 = 2 * precision * recall / (precision + recall)
+
+        f1s[i] = tf.reduce_mean(f1)
+
+    weights = tf.reduce_sum(y_true, axis=0)
+    weights /= tf.reduce_sum(weights)
+
+    f1s[2] = tf.reduce_sum(f1 * weights)
+
+    micro, macro, weighted = f1s
+
+    return acc_num, acc_prob, micro, macro, weighted
 
 
 def train_func(loss, r, global_step, optimizer=None):
@@ -85,14 +139,16 @@ def train_func(loss, r, global_step, optimizer=None):
         return tf.train.AdamOptimizer(learning_rate=r).minimize(loss, global_step=global_step)
 
 
-def summary_func(loss, acc, test_loss, test_acc, _dir, title, sess):
+def summary_func(loss, acc, f1, test_loss, test_acc, test_f1, _dir, title, sess):
     summary_loss = tf.summary.scalar('loss' + title, loss)
     summary_acc = tf.summary.scalar('acc' + title, acc)
+    summary_f1_micro = tf.summary.scalar('f1_micro' + title, f1)
     test_summary_loss = tf.summary.scalar('loss' + title, test_loss)
     test_summary_acc = tf.summary.scalar('acc' + title, test_acc)
-    train_summary_op = tf.summary.merge([summary_loss, summary_acc])
-    validate_summary_op = tf.summary.merge([summary_loss, summary_acc])
-    test_summary_op = tf.summary.merge([test_summary_loss, test_summary_acc])
+    test_summary_f1_micro = tf.summary.scalar('f1_micro' + title, test_f1)
+    train_summary_op = tf.summary.merge([summary_loss, summary_acc, summary_f1_micro])
+    validate_summary_op = tf.summary.merge([summary_loss, summary_acc, summary_f1_micro])
+    test_summary_op = tf.summary.merge([test_summary_loss, test_summary_acc, test_summary_f1_micro])
     train_summary_writer = tf.summary.FileWriter(_dir + '/train', sess.graph)
     test_summary_writer = tf.summary.FileWriter(_dir + '/test')
     validate_summary_writer = tf.summary.FileWriter(_dir + '/validate')
