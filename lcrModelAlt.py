@@ -190,7 +190,7 @@ def main(train_path, test_path, accuracyOnt, test_size, remaining_size, learning
         max_prob = None
         step = None
         for i in range(FLAGS.n_iter):
-            trainacc, trainf1, traincnt, train_sencnt = 0., 0., 0, 0
+            trainacc, trainf1, traincnt, train_batchcnt= 0., 0., 0, 0
             for train, numtrain, num_sen in get_batch_data(tr_x, tr_sen_len, tr_x_bw, tr_sen_len_bw, tr_n_asp, tr_y, tr_target_word, tr_tar_len,
                                            FLAGS.batch_size, keep_prob, keep_prob):
                 # _, step = sess.run([optimizer, global_step], feed_dict=train)
@@ -201,8 +201,8 @@ def main(train_path, test_path, accuracyOnt, test_size, remaining_size, learning
                 trainacc += _trainacc            # saver.save(sess, save_dir, global_step=step)
                 trainf1 += _trainf1
                 traincnt += numtrain
-                train_sencnt += num_sen
-            acc, f1, cost, cnt, test_sencnt = 0., 0., 0., 0, 0
+                train_batchcnt += 1
+            acc, f1, cost, cnt, test_batchcnt = 0., 0., 0., 0, 0
             fw, bw, tl, tr, ty, py = [], [], [], [], [], []
             p = []
             for test, num, num_sen in get_batch_data(te_x, te_sen_len, te_x_bw, te_sen_len_bw, te_n_asp, te_y,
@@ -227,12 +227,12 @@ def main(train_path, test_path, accuracyOnt, test_size, remaining_size, learning
                 f1 += _f1
                 cost += _loss * num
                 cnt += num
-                test_sencnt += num_sen
+                test_batchcnt += 1
             print('all samples={}, correct prediction={}'.format(cnt, acc))
             trainacc = trainacc / traincnt
-            trainf1 = trainf1 / train_sencnt
+            trainf1 = trainf1 / train_batchcnt
             acc = acc / cnt
-            f1 = f1 / test_sencnt
+            f1 = f1 / test_batchcnt
             totalacc = ((acc * remaining_size) + (accuracyOnt * (test_size - remaining_size))) / test_size
             cost = cost / cnt
             print('Iter {}: mini-batch loss={:.6f}, train acc={:.6f}, train_f1_micro={:.6f}, test acc={:.6f}, \

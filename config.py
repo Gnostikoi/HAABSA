@@ -7,8 +7,7 @@ import sys
 import os
 
 import os
-java_path = "/usr/bin/java"
-os.environ['JAVAHOME'] = java_path
+
 
 FLAGS = tf.app.flags.FLAGS
 #general variables

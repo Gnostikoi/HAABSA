@@ -23,6 +23,7 @@ import sys
 def main(_):
     loadData = False
     # loadData = True 
+    # useOntology = True 
     useOntology = False
     runCABASC = False
     runLCRROT = False

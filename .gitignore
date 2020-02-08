@@ -3,4 +3,5 @@ haabsa
 __pycache__/
 data/externalData/*
 data/programGeneratedData/*
-
+summary/
+prob*.txt*
