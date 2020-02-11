@@ -19,6 +19,8 @@ from config import *
 import numpy as np
 import sys
 
+tf.debugging.set_log_device_placement(True)
+
 # main function
 def main(_):
     loadData = False
@@ -41,7 +43,7 @@ def main(_):
     
     # retrieve data and wordembeddings
     train_size, test_size, train_polarity_vector, test_polarity_vector = loadDataAndEmbeddings(FLAGS, loadData)
-    print(test_size)
+    # print(test_size)
     remaining_size = 250
     accuracyOnt = 0.87
 
@@ -144,4 +146,4 @@ def main(_):
 
 if __name__ == '__main__':
     # wrapper that handles flag parsing and then dispatches the main
-    tf.app.run()
+    tf.compat.v1.app.run()

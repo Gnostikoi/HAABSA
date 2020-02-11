@@ -99,7 +99,7 @@ def _get_data_tuple(sptoks, asp_termIn, label):
         'FOOD#PRICES': 9, 
         'LOCATION#GENERAL': 10, 
         'DRINKS#QUALITY': 11,
-        'NONE': 13
+        'None': 13
     } 
     lab = label_map[label]
 
@@ -198,7 +198,6 @@ def read_data_2016(fname, source_count, source_word2idx, target_count, target_ph
     sentence_n_aspects = dict()
     for sentence in root.iter('sentence'):
         sentence_id = sentence.get("id")
-        sentence_n_aspects[sentence_id] = []
         sent = sentence.find('text').text
         sentenceNew = re.sub(' +', ' ', sent)
         sptoks = nltk.word_tokenize(sentenceNew)
@@ -209,6 +208,7 @@ def read_data_2016(fname, source_count, source_word2idx, target_count, target_ph
             NPs = chunk(sentenceNew)
             aspects = []
             labels = []
+            null_asp = None
             for opinions in sentence.iter('Opinions'):
                 for opinion in opinions.findall('Opinion'):
                     # if opinion.get("polarity") == "conflict": continue
@@ -218,12 +218,19 @@ def read_data_2016(fname, source_count, source_word2idx, target_count, target_ph
                             if asp in np or np in asp and len(np) > 3:
                                 NPs.remove(np)
                     else:
+                        null_asp = opinion.get('category')
                         asp = GENERAL_ASPECT_TAG
                     aspects.append(asp)
                     labels.append(opinion.get('category'))
-            for np in NPs:
-                aspects.append(np)
-                labels.append('NONE')
+
+            if NPs != []:
+                for np in NPs:
+                    aspects.append(np)
+                    labels.append(str(null_asp))
+
+            if len(aspects) == 0:
+                continue
+            sentence_n_aspects[sentence_id] = []
             for asp, category in zip(aspects, labels):
                 sentence_n_aspects[sentence_id].append(asp_cnt)
                 aspNew = re.sub(' +', ' ', asp)

@@ -47,11 +47,11 @@ def load_w2v(w2v_file, embedding_dim, is_skip=False):
         word_dict[line[0]] = cnt
     w2v = np.asarray(w2v, dtype=np.float32)
     w2v = np.row_stack((w2v, np.sum(w2v, axis=0) / cnt))
-    print(np.shape(w2v))
+    # print(np.shape(w2v))
     word_dict['$t$'] = (cnt + 1)
     # w2v -= np.mean(w2v, axis=0)
     # w2v /= np.std(w2v, axis=0)
-    print(word_dict['$t$'], len(w2v))
+    # print(word_dict['$t$'], len(w2v))
     return word_dict, w2v
 
 
@@ -64,7 +64,7 @@ def load_word_embedding(word_id_file, w2v_file, embedding_dim, is_skip=False):
             word_dict[k] = cnt
             w2v = np.row_stack((w2v, np.random.uniform(-0.01, 0.01, (embedding_dim,))))
             cnt += 1
-    print(len(word_dict), len(w2v))
+    # print(len(word_dict), len(w2v))
     return word_dict, w2v
 
 
@@ -85,17 +85,17 @@ def load_aspect2id(input_file, word_id_mapping, w2v, embedding_dim):
             a2v.append(np.sum(tmp, axis=0) / len(tmp))
         else:
             a2v.append(np.random.uniform(-0.01, 0.01, (embedding_dim,)))
-    print(len(aspect2id), len(a2v))
+    # print(len(aspect2id), len(a2v))
     return aspect2id, np.asarray(a2v, dtype=np.float32)
 
 
 def change_y_to_onehot(y):
     from collections import Counter
-    print(Counter(y))
+    # print(Counter(y))
     class_set = set(y)
     n_class = len(class_set)
     y_onehot_mapping = dict(zip(class_set, range(n_class)))
-    print(y_onehot_mapping)
+    # print(y_onehot_mapping)
     onehot = []
     for label in y:
         tmp = [0] * n_class
@@ -103,6 +103,17 @@ def change_y_to_onehot(y):
         onehot.append(tmp)
     return np.asarray(onehot, dtype=np.int32)
 
+def change_onehot_to_multihot(y_one_hot, n_asp):
+    multi_hot_y = []
+    n_class = y_one_hot.shape[1]
+    for idxs in n_asp.values():
+        mh_y = np.sum(y_one_hot[idxs,:], axis=0)
+        multi_hot_y.append(mh_y)
+
+    multi_hot_y = np.asarray(multi_hot_y, dtype=np.int32)
+    assert multi_hot_y.shape[1] == y_one_hot.shape[1]
+    assert multi_hot_y.shape[0] == len(n_asp)
+    return multi_hot_y
 
 def load_inputs_twitter(input_file, word_id_file, sentence_len, type_='', is_r=True, target_len=10, encoding='utf8'):
     if type(word_id_file) is str:
@@ -172,18 +183,19 @@ def load_inputs_twitter(input_file, word_id_file, sentence_len, type_='', is_r=T
             x.append(words + [0] * (sentence_len - len(words)))
     all_y = y;
     y = change_y_to_onehot(y)
+    y_sen = change_onehot_to_multihot(y, n_asp)
     if type_ == 'TD':
         return np.asarray(x), np.asarray(sen_len), np.asarray(x_r), \
-               np.asarray(sen_len_r), np.asarray(y), n_asp
+               np.asarray(sen_len_r), y
     elif type_ == 'TC':
         return np.asarray(x), np.asarray(sen_len), np.asarray(x_r), np.asarray(sen_len_r), \
-               np.asarray(y), np.asarray(target_words), np.asarray(tar_len), np.asarray(all_sent), \
+               y, y_sen, np.asarray(target_words), np.asarray(tar_len), np.asarray(all_sent), \
                np.asarray(all_target), np.asarray(all_y), n_asp
     elif type_ == 'IAN':
         return np.asarray(x), np.asarray(sen_len), np.asarray(target_words), \
-               np.asarray(tar_len), np.asarray(y), n_asp
+               np.asarray(tar_len), y
     else:
-        return np.asarray(x), np.asarray(sen_len), np.asarray(y), n_asp
+        return np.asarray(x), np.asarray(sen_len), y
 
 
 def load_inputs_twitter_(input_file, word_id_file, sentence_len, type_='', is_r=True, target_len=10, encoding='utf8'):
